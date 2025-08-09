@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface SimpleActionButton {
   type: 'simple';
@@ -22,6 +22,11 @@ export interface Range {
   id: string;
   name: string;
   hands: Record<string, string>;
+  // Title properties are now part of the range
+  showTitle?: boolean;
+  titleText?: string;
+  titleFontSize?: number;
+  titleAlignment?: 'left' | 'center';
 }
 
 export interface Folder {
@@ -63,7 +68,7 @@ const defaultEditorSettings: EditorSettings = {
   font: {
     size: 'm',
     customSize: '14px',
-    color: 'white', // Changed default font color to white
+    color: 'white',
     weight: 'normal',
   },
 };
@@ -87,7 +92,7 @@ export const useRangeContext = () => {
   return context;
 };
 
-export const RangeProvider = ({ children }: { children: ReactNode }) => {
+export const RangeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [folders, setFolders] = useState<Folder[]>(() => {
     const saved = localStorage.getItem('poker-ranges-folders');
     return saved ? JSON.parse(saved) : [{

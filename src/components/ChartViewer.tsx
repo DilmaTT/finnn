@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { StoredChart, ChartButton } from "@/types/chart"; // Import interfaces from new types file
+import { StoredChart, ChartButton } from "@/types/chart";
 import { Range, ActionButton as ActionButtonType } from "@/contexts/RangeContext";
 import { PokerMatrix } from "@/components/PokerMatrix";
 import { useRangeContext } from "@/contexts/RangeContext";
@@ -110,6 +110,36 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [dynamicBorderStyle, setDynamicBorderStyle] = useState<React.CSSProperties>({});
 
+  const recordRangeAccess = (rangeId: string) => {
+    if (!rangeId) {
+      console.warn("[Stats] recordRangeAccess called with no rangeId.");
+      return;
+    }
+  
+    let stats: Record<string, number> = {};
+    try {
+      const rawStats = localStorage.getItem('poker-range-access-statistics');
+      if (rawStats) {
+        const parsed = JSON.parse(rawStats);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          stats = parsed;
+        }
+      }
+    } catch (error) {
+      console.error("Error parsing range access statistics, starting fresh for this session.", error);
+      stats = {};
+    }
+    
+    try {
+      const currentCount = Number(stats[rangeId]) || 0;
+      stats[rangeId] = currentCount + 1;
+      localStorage.setItem('poker-range-access-statistics', JSON.stringify(stats));
+    } catch (error) {
+      console.error("Error saving range access statistics to localStorage.", error);
+      alert("Не удалось сохранить статистику. Возможно, хранилище переполнено.");
+    }
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setViewportSize({ width: window.innerWidth, height: window.innerHeight });
@@ -163,6 +193,7 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
   
     const linkedRange = allRanges.find(range => range.id === button.linkedItem);
     if (linkedRange) {
+      recordRangeAccess(linkedRange.id);
       setDisplayedRange(linkedRange);
       setActiveButton(button);
       
@@ -188,6 +219,7 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
   const handleLinkButtonClick = (targetRangeId: string) => {
     const targetRange = allRanges.find(r => r.id === targetRangeId);
     if (targetRange) {
+      recordRangeAccess(targetRange.id);
       setDisplayedRange(targetRange);
     } else {
       alert('Связанный ренж не найден!');
@@ -297,15 +329,15 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
                 </div>
               )}
 
-              {activeButton?.showTitle && activeButton.titleText && (
+              {displayedRange.showTitle && displayedRange.titleText && (
                 <h3
                   className="mb-2 px-4 font-bold text-white"
                   style={{
-                    fontSize: `${activeButton.titleFontSize || 20}px`,
-                    textAlign: activeButton.titleAlignment || 'center',
+                    fontSize: `${displayedRange.titleFontSize || 20}px`,
+                    textAlign: displayedRange.titleAlignment || 'center',
                   }}
                 >
-                  {activeButton.titleText}
+                  {displayedRange.titleText}
                 </h3>
               )}
 

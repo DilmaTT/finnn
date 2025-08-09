@@ -50,7 +50,7 @@ const getActionButtonStyle = (button: ActionButtonType, allButtons: ActionButton
 };
 
 type LinkButtonConfig = NonNullable<ChartButton['linkButtons']>[0];
-type TitleConfig = {
+export type TitleConfig = {
   showTitle: boolean;
   titleText: string;
   titleFontSize: number;
@@ -187,21 +187,21 @@ export const LegendPreviewDialog = ({
       setTempLegendOverrides(editingButton?.legendOverrides || {});
       
       const initialLinkConfigs = editingButton?.linkButtons || [];
-      const filledLinkConfigs: LinkButtonConfig[] = Array(2).fill(null).map((_, index) => ({
+      const filledLinkConfigs: LinkButtonConfig[] = Array(3).fill(null).map((_, index) => ({
         ...(initialLinkConfigs[index] || { enabled: false, text: '', position: 'center', targetRangeId: '' })
       }));
       setLinkButtonConfigs(filledLinkConfigs);
 
       setTitleConfig({
-        showTitle: editingButton?.showTitle || false,
-        titleText: editingButton?.titleText || '',
-        titleFontSize: editingButton?.titleFontSize || 20,
-        titleAlignment: editingButton?.titleAlignment || 'center',
+        showTitle: linkedRange?.showTitle || false,
+        titleText: linkedRange?.titleText || linkedRange?.name || '',
+        titleFontSize: linkedRange?.titleFontSize || 20,
+        titleAlignment: linkedRange?.titleAlignment || 'center',
       });
 
       setLegendIsMultiLine(editingButton?.legendIsMultiLine ?? true);
     }
-  }, [isOpen, editingButton]);
+  }, [isOpen, editingButton, linkedRange]);
 
   const handleSave = () => {
     const cleanedOverrides: Record<string, string> = {};
@@ -224,6 +224,7 @@ export const LegendPreviewDialog = ({
     updatedConfigs[index] = newConfig;
     if (index === 0) {
       updatedConfigs[1] = { ...updatedConfigs[1], position: newConfig.position };
+      updatedConfigs[2] = { ...updatedConfigs[2], position: newConfig.position };
     }
     setLinkButtonConfigs(updatedConfigs);
   };
@@ -344,7 +345,7 @@ export const LegendPreviewDialog = ({
                       buttonIndex={index}
                     />
                   )}
-                  {index === 0 && linkButtonConfigs.length > 1 && <Separator className="my-4" />}
+                  {index < linkButtonConfigs.length - 1 && <Separator className="my-4" />}
                 </div>
               ))}
             </div>
