@@ -5,6 +5,8 @@ import { StoredChart, ChartButton } from "@/types/chart";
 import { Range, ActionButton as ActionButtonType } from "@/contexts/RangeContext";
 import { PokerMatrix } from "@/components/PokerMatrix";
 import { useRangeContext } from "@/contexts/RangeContext";
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 // Helper function to get the color for a simple action
 const getActionColor = (actionId: string, allButtons: ActionButtonType[]): string => {
@@ -180,6 +182,27 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Handle Android back button
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    const listenerPromise = App.addListener('backButton', () => {
+      if (showMatrixDialog) {
+        handleCloseDialog();
+      } else {
+        onBackToCharts();
+      }
+    });
+
+    return () => {
+      listenerPromise.then(listener => listener.remove()).catch(e => {
+        console.error("Failed to remove back button listener", e);
+      });
+    };
+  }, [showMatrixDialog, onBackToCharts]);
 
   const handleButtonClick = (button: ChartButton) => {
     if (button.type === 'label') {
