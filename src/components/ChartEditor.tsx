@@ -137,7 +137,7 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
       y: 50,
       width: 120,
       height: 40,
-      type: allRanges.length > 0 ? 'normal' : 'label',
+      type: allRanges.length > 0 ? 'button' : 'label',
       isFontAdaptive: true,
       fontSize: 16,
       fontColor: 'white',
@@ -145,11 +145,9 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
       legendIsMultiLine: true,
       showRandomizer: false,
       legendOverrides: {},
-      linkButtons: [
-        { enabled: false, text: '', position: 'center', targetRangeId: '' },
-        { enabled: false, text: '', position: 'center', targetRangeId: '' },
-        { enabled: false, text: '', position: 'center', targetRangeId: '' }
-      ],
+      linkButtons: Array(6).fill(null).map(() => ({
+        enabled: false, text: '', position: 'center', targetRangeId: ''
+      })),
     };
     setButtons((prev) => [...prev, newButton]);
     setEditingButton(newButton);

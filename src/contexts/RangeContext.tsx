@@ -51,6 +51,7 @@ export interface EditorSettings {
     customSize: string;
     color: 'auto' | 'white' | 'black';
     weight: 'normal' | 'bold';
+    inactiveFontTransparent: boolean; // New property for 50% transparency
   };
 }
 
@@ -70,6 +71,7 @@ const defaultEditorSettings: EditorSettings = {
     customSize: '14px',
     color: 'white',
     weight: 'normal',
+    inactiveFontTransparent: false, // Default to false
   },
 };
 
@@ -80,6 +82,7 @@ interface RangeContextType {
   setFolders: React.Dispatch<React.SetStateAction<Folder[]>>;
   setActionButtons: React.Dispatch<React.SetStateAction<ActionButton[]>>;
   setEditorSettings: React.Dispatch<React.SetStateAction<EditorSettings>>;
+  foldColor: string;
 }
 
 const RangeContext = createContext<RangeContextType | undefined>(undefined);
@@ -136,12 +139,18 @@ export const RangeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (!['normal', 'bold'].includes(settings.font.weight)) {
         settings.font.weight = defaultEditorSettings.font.weight;
       }
+      // Ensure inactiveFontTransparent is set, default to false if not present
+      if (typeof settings.font.inactiveFontTransparent === 'undefined') {
+        settings.font.inactiveFontTransparent = defaultEditorSettings.font.inactiveFontTransparent;
+      }
 
       return settings;
     } catch {
       return defaultEditorSettings;
     }
   });
+
+  const [foldColor, setFoldColor] = useState<string>('#6b7280');
 
   useEffect(() => {
     localStorage.setItem('poker-ranges-folders', JSON.stringify(folders));
@@ -155,8 +164,25 @@ export const RangeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem('poker-editor-settings', JSON.stringify(editorSettings));
   }, [editorSettings]);
 
+  useEffect(() => {
+    const matrixBgType = editorSettings.matrixBackgroundColor.type;
+    const cellBgType = editorSettings.cellBackgroundColor.type;
+
+    let newColor = '#6b7280'; // Default fallback
+
+    if (matrixBgType === 'dark' && cellBgType === 'default') {
+      newColor = '#161b26';
+    } else if (matrixBgType === 'white' && cellBgType === 'default') {
+      newColor = '#8f949d';
+    } else if (matrixBgType === 'white' && cellBgType === 'white') {
+      newColor = '#ffffff';
+    }
+
+    setFoldColor(newColor);
+  }, [editorSettings]);
+
   return (
-    <RangeContext.Provider value={{ folders, actionButtons, editorSettings, setFolders, setActionButtons, setEditorSettings }}>
+    <RangeContext.Provider value={{ folders, actionButtons, editorSettings, setFolders, setActionButtons, setEditorSettings, foldColor }}>
       {children}
     </RangeContext.Provider>
   );
