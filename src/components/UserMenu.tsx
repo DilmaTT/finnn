@@ -14,7 +14,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthDialog } from "./AuthDialog";
 import { EditorSettingsDialog } from "./dialogs/EditorSettingsDialog";
-import { Settings, Download, Upload, LogOut, CloudUpload, CloudDownload } from "lucide-react";
+import { MemorySlotsDialog } from "./dialogs/MemorySlotsDialog";
+import { Settings, Download, Upload, LogOut, CloudUpload, CloudDownload, Database } from "lucide-react";
 import { importDataFromFile, exportDataToFile, syncDataToSupabase, loadDataFromSupabase, downloadCloudBackup } from "@/lib/data-manager";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export const UserMenu = ({ isMobileMode }: UserMenuProps) => {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [editorSettingsOpen, setEditorSettingsOpen] = useState(false);
+  const [memorySlotsOpen, setMemorySlotsOpen] = useState(false);
 
   // --- UNAUTHORIZED STATE ---
   if (!isAuthenticated) {
@@ -88,6 +90,10 @@ export const UserMenu = ({ isMobileMode }: UserMenuProps) => {
                 <Settings className="mr-2 h-4 w-4" />
                 Настройки редактора
               </Button>
+              <Button variant="outline" onClick={() => { setMemorySlotsOpen(true); closeMobileMenu(); }}>
+                <Database className="mr-2 h-4 w-4" />
+                Слоты памяти
+              </Button>
               <hr className="my-2"/>
               <Button variant="outline" onClick={() => { syncDataToSupabase(); closeMobileMenu(); }}>
                 <CloudUpload className="mr-2 h-4 w-4" />
@@ -123,6 +129,10 @@ export const UserMenu = ({ isMobileMode }: UserMenuProps) => {
           onOpenChange={setEditorSettingsOpen}
           isMobileMode={isMobileMode}
         />
+        <MemorySlotsDialog
+          open={memorySlotsOpen}
+          onOpenChange={setMemorySlotsOpen}
+        />
       </>
     );
   }
@@ -147,6 +157,10 @@ export const UserMenu = ({ isMobileMode }: UserMenuProps) => {
           <DropdownMenuItem onClick={() => setEditorSettingsOpen(true)}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Настройки редактора</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setMemorySlotsOpen(true)}>
+            <Database className="mr-2 h-4 w-4" />
+            <span>Слоты памяти</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => syncDataToSupabase()}>
@@ -181,6 +195,10 @@ export const UserMenu = ({ isMobileMode }: UserMenuProps) => {
         isOpen={editorSettingsOpen}
         onOpenChange={setEditorSettingsOpen}
         isMobileMode={isMobileMode}
+      />
+      <MemorySlotsDialog
+        open={memorySlotsOpen}
+        onOpenChange={setMemorySlotsOpen}
       />
     </>
   );

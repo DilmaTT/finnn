@@ -15,7 +15,7 @@ interface CreateActionButtonDialogProps {
   onSave: (button: ActionButton) => void;
 }
 
-const PRESET_COLORS = ['#8b5cf6', '#ef4444', '#10b981'];
+const PRESET_COLORS = ['#cfb912', '#bf792d', '#bd3636', '#ce3298', '#4248c0', '#128caa', '#9b24be', '#b2275a', '#2bb04a', '#137d64'];
 
 export const CreateActionButtonDialog = ({ open, onOpenChange, onSave }: CreateActionButtonDialogProps) => {
   const { actionButtons } = useRangeContext();
@@ -112,7 +112,7 @@ export const CreateActionButtonDialog = ({ open, onOpenChange, onSave }: CreateA
           {buttonType === 'simple' && (
             <div className="space-y-3">
               <Label>Цвет</Label>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 {PRESET_COLORS.map(preset => (
                   <button
                     key={preset}

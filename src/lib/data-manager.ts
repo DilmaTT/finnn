@@ -22,7 +22,27 @@ interface AppData {
   timestamp: string;
 }
 
-const APP_DATA_VERSION = 1;
+export interface MemorySlotData {
+  folders: any[];
+  actionButtons: any[];
+  trainings: any[];
+  statistics: SessionStat[];
+  rangeAccessStats: Record<string, number>;
+  charts: any[];
+  editorSettings: any;
+}
+
+export interface MemorySlot {
+  id?: number;
+  user_id?: string;
+  slot_index: number;
+  name: string;
+  data: MemorySlotData | null;
+  updated_at?: string;
+}
+
+
+export const APP_DATA_VERSION = 1;
 
 // --- Helper Functions ---
 const isTauri = (): boolean => '__TAURI__' in window;
@@ -31,7 +51,7 @@ const isCapacitor = (): boolean => !!(window as any).Capacitor?.isNativePlatform
 /**
  * Gathers all relevant data from localStorage into a single object.
  */
-const gatherData = (): AppData => {
+export const gatherData = (): AppData => {
   console.log("[DM] Gathering data from localStorage...");
   const folders = JSON.parse(localStorage.getItem('poker-ranges-folders') || '[]');
   const actionButtons = JSON.parse(localStorage.getItem('poker-ranges-actions') || '[]');
@@ -90,7 +110,7 @@ const gatherData = (): AppData => {
 /**
  * Applies imported data to the application.
  */
-const applyData = (data: AppData, reload: boolean = true) => {
+export const applyData = (data: AppData, reload: boolean = true) => {
   console.log("[DM] Attempting to apply data:", data);
   if (!data || data.version > APP_DATA_VERSION) {
     console.error("[DM] Invalid or newer data format.");
@@ -293,6 +313,141 @@ export const loadDataFromSupabase = async (user: SupabaseUser | null) => {
     console.log("[DM] loadDataFromSupabase function finished execution.");
   }
 };
+
+// --- Memory Slot Management ---
+
+/**
+ * Fetches all 5 memory slots for the current user.
+ * Returns default objects for empty slots.
+ */
+export const fetchMemorySlots = async (): Promise<MemorySlot[]> => {
+  console.log("[DM] Fetching memory slots...");
+  const { data: { user } } = await supabase.auth.getUser();
+  const defaultSlots: MemorySlot[] = Array.from({ length: 5 }, (_, i) => ({
+    slot_index: i,
+    name: 'Пустой слот',
+    data: null,
+  }));
+
+  if (!user) {
+    console.log("[DM] No user logged in, returning default slots.");
+    return defaultSlots;
+  }
+
+  const { data, error } = await supabase
+    .from('memory_slots')
+    .select('*')
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error("[DM] Error fetching memory slots:", error);
+    return defaultSlots;
+  }
+
+  const slotsMap = new Map(data.map(slot => [slot.slot_index, slot]));
+  const resultSlots = defaultSlots.map((defaultSlot, i) => {
+    return slotsMap.has(i) ? { ...defaultSlot, ...slotsMap.get(i) } : defaultSlot;
+  });
+
+  console.log("[DM] Memory slots fetched and merged:", resultSlots);
+  return resultSlots;
+};
+
+/**
+ * Saves data to a specific memory slot for the current user.
+ */
+export const saveToMemorySlot = async (slotIndex: number, name: string, data: MemorySlotData): Promise<{ success: boolean; error?: any }> => {
+  console.log(`[DM] Saving to memory slot ${slotIndex}...`);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.error("[DM] Cannot save to memory slot: no user logged in.");
+    return { success: false, error: new Error("Пользователь не авторизован.") };
+  }
+
+  const { error } = await supabase
+    .from('memory_slots')
+    .upsert({
+      user_id: user.id,
+      slot_index: slotIndex,
+      name,
+      data,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,slot_index' });
+
+  if (error) {
+    console.error(`[DM] Error saving to memory slot ${slotIndex}:`, error);
+    return { success: false, error };
+  }
+
+  console.log(`[DM] Successfully saved to memory slot ${slotIndex}.`);
+  return { success: true };
+};
+
+/**
+ * Loads data from a specific memory slot.
+ * Returns the data object or null if the slot is empty.
+ */
+export const loadFromMemorySlot = async (slotIndex: number): Promise<MemorySlotData | null> => {
+  console.log(`[DM] Loading from memory slot ${slotIndex}...`);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.error("[DM] Cannot load from memory slot: no user logged in.");
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('memory_slots')
+    .select('data')
+    .eq('user_id', user.id)
+    .eq('slot_index', slotIndex)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // Ignore "no rows found" error
+    console.error(`[DM] Error loading from memory slot ${slotIndex}:`, error);
+    return null;
+  }
+
+  if (data && data.data) {
+    console.log(`[DM] Data loaded from slot ${slotIndex}.`);
+    return data.data as MemorySlotData;
+  }
+  
+  console.log(`[DM] No data found in memory slot ${slotIndex}.`);
+  return null;
+};
+
+/**
+ * Renames a specific memory slot for the current user.
+ */
+export const renameMemorySlot = async (slotIndex: number, newName: string): Promise<{ success: boolean; error?: any }> => {
+  console.log(`[DM] Renaming memory slot ${slotIndex} to "${newName}"...`);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.error("[DM] Cannot rename memory slot: no user logged in.");
+    return { success: false, error: new Error("Пользователь не авторизован.") };
+  }
+
+  const { error } = await supabase
+    .from('memory_slots')
+    .upsert({
+      user_id: user.id,
+      slot_index: slotIndex,
+      name: newName,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,slot_index' });
+
+  if (error) {
+    console.error(`[DM] Error renaming memory slot ${slotIndex}:`, error);
+    return { success: false, error };
+  }
+
+  console.log(`[DM] Successfully renamed memory slot ${slotIndex}.`);
+  return { success: true };
+};
+
 
 export const clearLocalData = () => {
   console.log("[DM] Clearing local data...");
