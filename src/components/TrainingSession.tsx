@@ -266,7 +266,7 @@ export const TrainingSession = ({ training, onStop }: TrainingSessionProps) => {
     }
   };
 
-  const handleMatrixSelect = (hand: string) => {
+  const handleMatrixSelect = (hand: string, mode: 'select' | 'deselect') => {
     if (isChecked) return;
 
     if (!activeAction) {
@@ -279,10 +279,13 @@ export const TrainingSession = ({ training, onStop }: TrainingSessionProps) => {
     }
     
     const newMatrix = { ...userMatrix };
-    if (newMatrix[hand] === activeAction) {
-      delete newMatrix[hand];
-    } else {
+    if (mode === 'select') {
       newMatrix[hand] = activeAction;
+    } else { // mode === 'deselect'
+      // Only deselect if the current action matches the active action
+      if (newMatrix[hand] === activeAction) {
+        delete newMatrix[hand];
+      }
     }
     setUserMatrix(newMatrix);
   };

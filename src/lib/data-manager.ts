@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { EditorSettings } from '@/contexts/RangeContext'; // Import EditorSettings
 
 // --- Data Structure ---
 interface SessionStat {
@@ -18,7 +19,7 @@ interface AppData {
   statistics: SessionStat[];
   rangeAccessStats: Record<string, number>; // New: Range access counts
   charts: any[];
-  editorSettings: any;
+  editorSettings: EditorSettings; // Use imported EditorSettings type
   timestamp: string;
 }
 
@@ -29,7 +30,7 @@ export interface MemorySlotData {
   statistics: SessionStat[];
   rangeAccessStats: Record<string, number>;
   charts: any[];
-  editorSettings: any;
+  editorSettings: EditorSettings; // Use imported EditorSettings type
 }
 
 export interface MemorySlot {
@@ -88,7 +89,38 @@ export const gatherData = (): AppData => {
   }
 
   const charts = JSON.parse(localStorage.getItem('userCharts') || '[]');
-  const editorSettings = JSON.parse(localStorage.getItem('poker-editor-settings') || '{}');
+  // Parse editor settings and ensure inactiveFontTransparent has a default
+  const editorSettingsRaw = localStorage.getItem('poker-editor-settings');
+  let editorSettings: EditorSettings = {
+    matrixBackgroundColor: { type: 'dark', customColor: '#000000' },
+    cellBackgroundColor: { type: 'default', customColor: '#000000' },
+    cellBorderRadius: 'md',
+    cellSpacing: 'md',
+    font: {
+      size: 'm',
+      customSize: '16px',
+      color: 'auto',
+      weight: 'normal',
+      inactiveFontTransparent: false, // Default value for the new flag
+    },
+  };
+  if (editorSettingsRaw) {
+    try {
+      const parsedSettings = JSON.parse(editorSettingsRaw);
+      // Merge with defaults to ensure new properties are present
+      editorSettings = {
+        ...editorSettings, // Start with defaults
+        ...parsedSettings, // Override with saved settings
+        font: {
+          ...editorSettings.font, // Start with default font settings
+          ...parsedSettings.font, // Override with saved font settings
+        }
+      };
+    } catch (e) {
+      console.error("[DM] Failed to parse editor settings, defaulting to initial settings.", e);
+    }
+  }
+
   const timestamp = localStorage.getItem('poker-data-timestamp') || new Date(0).toISOString();
 
   const data = {
@@ -275,6 +307,21 @@ export const loadDataFromSupabase = async (user: SupabaseUser | null) => {
               const cloudRangeStatsObject: Record<string, number> = (typeof cloudRangeStats === 'object' && cloudRangeStats !== null && !Array.isArray(cloudRangeStats)) ? cloudRangeStats : {};
               const mergedRangeAccessStats = mergeRangeAccessStats(localRangeStats, cloudRangeStatsObject);
 
+              // Ensure editor_settings is properly typed and defaults are applied if missing from cloud
+              const cloudEditorSettings: EditorSettings = {
+                matrixBackgroundColor: cloudUserData.editor_settings?.matrixBackgroundColor || { type: 'dark', customColor: '#000000' },
+                cellBackgroundColor: cloudUserData.editor_settings?.cellBackgroundColor || { type: 'default', customColor: '#000000' },
+                cellBorderRadius: cloudUserData.editor_settings?.cellBorderRadius || 'md',
+                cellSpacing: cloudUserData.editor_settings?.cellSpacing || 'md',
+                font: {
+                  size: cloudUserData.editor_settings?.font?.size || 'm',
+                  customSize: cloudUserData.editor_settings?.font?.customSize || '16px',
+                  color: cloudUserData.editor_settings?.font?.color || 'auto',
+                  weight: cloudUserData.editor_settings?.font?.weight || 'normal',
+                  inactiveFontTransparent: cloudUserData.editor_settings?.font?.inactiveFontTransparent ?? false, // Use nullish coalescing for boolean
+                },
+              };
+
               const appDataToApply: AppData = {
                 version: APP_DATA_VERSION,
                 folders: cloudUserData.folders || [],
@@ -283,7 +330,7 @@ export const loadDataFromSupabase = async (user: SupabaseUser | null) => {
                 statistics: mergedTrainingStats,
                 rangeAccessStats: mergedRangeAccessStats, // Add this
                 charts: cloudUserData.charts || [],
-                editorSettings: cloudUserData.editor_settings || {},
+                editorSettings: cloudEditorSettings, // Use the merged/defaulted editor settings
                 timestamp: cloudUserData.updated_at || new Date().toISOString(),
               };
               console.log(`[DM] Applying cloud data: ${appDataToApply.folders.length} folders, ${appDataToApply.actionButtons.length} actions, ${appDataToApply.trainings.length} trainings, ${appDataToApply.statistics.length} training stats, ${Object.keys(appDataToApply.rangeAccessStats).length} range access stats, ${appDataToApply.charts.length} charts.`);

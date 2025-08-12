@@ -46,9 +46,8 @@ export const PokerMatrix = ({ selectedHands, onHandSelect, activeAction, actionB
   const { editorSettings, foldColor } = useRangeContext();
   const [isDragging, setIsDragging] = useState(false);
   const [dragMode, setDragMode] = useState<'select' | 'deselect' | null>(null);
-  const lastHandSelectedDuringDrag = useRef<string | null>(null);
-  const touchStarted = useRef(false);
-  const hasDragged = useRef(false);
+  const initialHandRef = useRef<string | null>(null);
+  const hasDragged = useRef(false); // Флаг для определения, было ли движение (перетаскивание)
 
   const getActionColor = (actionId: string, buttons: ActionButton[]): string => {
     if (actionId === 'fold') return foldColor;
@@ -61,62 +60,95 @@ export const PokerMatrix = ({ selectedHands, onHandSelect, activeAction, actionB
     if (isBackgroundMode) {
       setIsDragging(false);
       setDragMode(null);
+      initialHandRef.current = null;
+      hasDragged.current = false;
     }
   }, [isBackgroundMode]);
 
+  // Глобальный слушатель mouse/touch up для обработки окончания перетаскивания/тапа
   useEffect(() => {
-    const enhancedDragEnd = () => {
+    const handleGlobalPointerUp = () => {
+      if (readOnly || isBackgroundMode) return;
+
+      // Логика выбора ячейки теперь обрабатывается в handleDesktopMouseDown и handleMobileTouchStart.
+      // Здесь мы просто сбрасываем состояние перетаскивания.
       setIsDragging(false);
       setDragMode(null);
-      touchStarted.current = false;
+      initialHandRef.current = null;
+      hasDragged.current = false;
     };
-    window.addEventListener('mouseup', enhancedDragEnd);
-    window.addEventListener('touchend', enhancedDragEnd);
-    window.addEventListener('touchcancel', enhancedDragEnd);
+
+    window.addEventListener('mouseup', handleGlobalPointerUp);
+    window.addEventListener('touchend', handleGlobalPointerUp);
+    window.addEventListener('touchcancel', handleGlobalPointerUp);
     return () => {
-      window.removeEventListener('mouseup', enhancedDragEnd);
-      window.removeEventListener('touchend', enhancedDragEnd);
-      window.removeEventListener('touchcancel', enhancedDragEnd);
+      window.removeEventListener('mouseup', handleGlobalPointerUp);
+      window.removeEventListener('touchend', handleGlobalPointerUp);
+      window.removeEventListener('touchcancel', handleGlobalPointerUp);
     };
-  }, []);
+  }, [readOnly, isBackgroundMode]); // Зависимости изменены, так как здесь больше нет логики выбора
 
-  const handlePointerDown = (hand: string) => {
-    if (readOnly || isBackgroundMode) return;
-    hasDragged.current = false;
-    lastHandSelectedDuringDrag.current = hand;
-    setIsDragging(true);
-    const currentHandAction = selectedHands[hand];
-    const mode = currentHandAction === activeAction ? 'deselect' : 'select';
-    setDragMode(mode);
-    onHandSelect(hand, mode);
-  };
-
-  const handleTouchStart = (hand: string) => {
-    touchStarted.current = true;
-    handlePointerDown(hand);
-  };
-
-  const handleMouseDown = (hand: string) => {
-    if (touchStarted.current) return;
-    handlePointerDown(hand);
-  };
-
-  const handlePointerEnter = (hand: string) => {
+  // Вспомогательная функция для логики перетаскивания (входа в ячейку)
+  const handleDragEnterLogic = (hand: string) => {
     if (readOnly || isBackgroundMode || !isDragging || !dragMode) return;
-    if (lastHandSelectedDuringDrag.current !== hand) {
-      hasDragged.current = true;
+    
+    // Если рука отличается от начальной, или если уже было движение (hasDragged = true),
+    // то это перетаскивание, и мы выбираем руку.
+    if (initialHandRef.current !== hand || hasDragged.current) {
+      hasDragged.current = true; // Подтверждаем, что это перетаскивание
       onHandSelect(hand, dragMode);
-      lastHandSelectedDuringDrag.current = hand;
     }
   };
 
-  const handleTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+  // Обработчики для десктопа (мышь)
+  const handleDesktopMouseDown = (event: React.MouseEvent<HTMLButtonElement>, hand: string) => {
+    if (readOnly || isBackgroundMode) return;
+    event.preventDefault(); // Предотвращаем выделение текста
+    
+    initialHandRef.current = hand;
+    hasDragged.current = false;
+    setIsDragging(true);
+    
+    const currentHandAction = selectedHands[hand];
+    const mode = currentHandAction === activeAction ? 'deselect' : 'select';
+    setDragMode(mode);
+    
+    onHandSelect(hand, mode); // Выбираем начальную руку сразу для десктопа
+  };
+
+  const handleDesktopMouseEnter = (hand: string) => {
+    handleDragEnterLogic(hand);
+  };
+
+  // Обработчики для мобильных устройств (тач)
+  const handleMobileTouchStart = (event: React.TouchEvent<HTMLButtonElement>, hand: string) => {
+    if (readOnly || isBackgroundMode) return;
+    event.preventDefault(); // Предотвращаем стандартное поведение касания (например, прокрутку)
+    
+    initialHandRef.current = hand;
+    hasDragged.current = false; // Изначально предполагаем, что это тап
+    setIsDragging(true);
+    
+    const currentHandAction = selectedHands[hand];
+    const mode = currentHandAction === activeAction ? 'deselect' : 'select';
+    setDragMode(mode);
+    
+    onHandSelect(hand, mode); // Выбираем начальную руку сразу для мобильных устройств
+  };
+
+  const handleMobileTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
     if (!isDragging || isBackgroundMode) return;
-    event.preventDefault();
+    event.preventDefault(); // Предотвращаем прокрутку во время перетаскивания
     const touch = event.touches[0];
     const element = document.elementFromPoint(touch.clientX, touch.clientY);
     if (element instanceof HTMLElement && element.dataset.hand) {
-      handlePointerEnter(element.dataset.hand);
+      const hand = element.dataset.hand;
+      // Если касание переместилось на другую руку, или если мы уже начали перетаскивание,
+      // то обрабатываем это как перетаскивание.
+      if (initialHandRef.current !== hand || hasDragged.current) {
+          hasDragged.current = true; // Подтверждаем, что это перетаскивание
+          handleDragEnterLogic(hand);
+      }
     }
   };
 
@@ -168,11 +200,11 @@ export const PokerMatrix = ({ selectedHands, onHandSelect, activeAction, actionB
       }
     }
 
-    // Apply 50% transparency for inactive cells if the setting is enabled
+    // Применяем 50% прозрачности для неактивных ячеек, если настройка включена
     if (editorSettings.font.inactiveFontTransparent && !actionId) {
       style.opacity = 0.5;
     } else {
-      style.opacity = 1; // Ensure active cells are fully opaque
+      style.opacity = 1; // Убедимся, что активные ячейки полностью непрозрачны
     }
 
     return style;
@@ -229,7 +261,7 @@ export const PokerMatrix = ({ selectedHands, onHandSelect, activeAction, actionB
 
   return (
     <div className={parentContainerClasses} style={getMatrixBackgroundStyle()}>
-      <div className={gridClasses} onTouchMove={handleTouchMove}>
+      <div className={gridClasses} onTouchMove={isMobile ? handleMobileTouchMove : undefined}>
         {HANDS.map((row, rowIndex) => 
           row.map((hand, colIndex) => (
             <Button
@@ -239,10 +271,9 @@ export const PokerMatrix = ({ selectedHands, onHandSelect, activeAction, actionB
               size="sm"
               className={cn(buttonClasses, getHandColorClass(hand))}
               style={getHandStyle(hand)}
-              onMouseDown={() => handleMouseDown(hand)}
-              onMouseEnter={() => handlePointerEnter(hand)}
-              onTouchStart={() => handleTouchStart(hand)}
-              onClick={() => { if (readOnly || isBackgroundMode || hasDragged.current) return; }}
+              onMouseDown={isMobile ? undefined : (e) => handleDesktopMouseDown(e, hand)}
+              onMouseEnter={isMobile ? undefined : () => handleDesktopMouseEnter(hand)}
+              onTouchStart={isMobile ? (e) => handleMobileTouchStart(e, hand) : undefined}
             >
               {hand}
             </Button>

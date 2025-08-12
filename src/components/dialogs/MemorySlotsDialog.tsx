@@ -9,9 +9,6 @@ import {
   renameMemorySlot,
   MemorySlot,
   MemorySlotData,
-  gatherData, // Import gatherData
-  applyData,  // Import applyData
-  APP_DATA_VERSION, // Import APP_DATA_VERSION
 } from '@/lib/data-manager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +55,6 @@ const MemorySlotsContent: React.FC<{ setOpen: (open: boolean) => void }> = ({ se
   }, []);
 
   useEffect(() => {
-    // Only load slots when the dialog is opened
     if (open) {
       loadSlots();
     }
@@ -78,24 +74,13 @@ const MemorySlotsContent: React.FC<{ setOpen: (open: boolean) => void }> = ({ se
 
   const handleSave = async (slotIndex: number) => {
     const slotName = slots.find(s => s.slot_index === slotIndex)?.name || `Слот ${slotIndex + 1}`;
-    
-    // Gather all current app data to save to the memory slot
-    const currentAppData = gatherData();
-    const dataToSave: MemorySlotData = {
-      folders: currentAppData.folders,
-      actionButtons: currentAppData.actionButtons,
-      trainings: currentAppData.trainings,
-      statistics: currentAppData.statistics,
-      rangeAccessStats: currentAppData.rangeAccessStats,
-      charts: currentAppData.charts,
-      editorSettings: currentAppData.editorSettings,
-    };
+    const dataToSave: MemorySlotData = { folders, actionButtons };
     
     await handleOperation(`save-${slotIndex}`, async () => {
       const result = await saveToMemorySlot(slotIndex, slotName, dataToSave);
       if (result.success) {
         alert(`Настройки успешно сохранены в "${slotName}"`);
-        await loadSlots(); // Reload slots to show updated names/data status
+        await loadSlots();
       } else {
         throw result.error || new Error('Не удалось сохранить слот.');
       }
@@ -107,23 +92,12 @@ const MemorySlotsContent: React.FC<{ setOpen: (open: boolean) => void }> = ({ se
       return;
     }
     await handleOperation(`load-${slotIndex}`, async () => {
-      const loadedSlotData = await loadFromMemorySlot(slotIndex);
-      if (loadedSlotData) {
-        // Construct AppData object from loadedSlotData to use applyData
-        const appDataToApply = {
-          version: APP_DATA_VERSION, // Use the current app data version
-          folders: loadedSlotData.folders,
-          actionButtons: loadedSlotData.actionButtons,
-          trainings: loadedSlotData.trainings,
-          statistics: loadedSlotData.statistics,
-          rangeAccessStats: loadedSlotData.rangeAccessStats,
-          charts: loadedSlotData.charts,
-          editorSettings: loadedSlotData.editorSettings,
-          timestamp: new Date().toISOString(), // Use current timestamp for loaded data
-        };
-        
-        applyData(appDataToApply); // This function handles setting localStorage and reloading the page
-        // No need for setFolders, setActionButtons, alert, or setOpen(false) here as applyData reloads
+      const data = await loadFromMemorySlot(slotIndex);
+      if (data) {
+        setFolders(data.folders);
+        setActionButtons(data.actionButtons);
+        alert("Настройки успешно загружены.");
+        setOpen(false);
       } else {
         alert("Не удалось загрузить данные из слота.");
       }
@@ -141,7 +115,7 @@ const MemorySlotsContent: React.FC<{ setOpen: (open: boolean) => void }> = ({ se
       if (result.success) {
         alert("Слот успешно переименован.");
         setEditingSlot(null);
-        await loadSlots(); // Reload slots to show updated names
+        await loadSlots();
       } else {
         throw result.error || new Error('Не удалось переименовать слот.');
       }
@@ -223,7 +197,6 @@ export const MemorySlotsDialog: React.FC<MemorySlotsDialogProps> = ({ open, onOp
               Сохраняйте и загружайте до 5 различных конфигураций папок и кнопок.
             </DrawerDescription>
           </DrawerHeader>
-          {/* Pass 'open' prop to MemorySlotsContent to trigger data loading only when dialog is open */}
           {open && <MemorySlotsContent setOpen={onOpenChange} />}
           <DrawerFooter className="pt-2">
             <DrawerClose asChild>
@@ -244,7 +217,6 @@ export const MemorySlotsDialog: React.FC<MemorySlotsDialogProps> = ({ open, onOp
             Сохраняйте и загружайте до 5 различных конфигураций папок и кнопок.
           </DialogDescription>
         </DialogHeader>
-        {/* Pass 'open' prop to MemorySlotsContent to trigger data loading only when dialog is open */}
         {open && <MemorySlotsContent setOpen={onOpenChange} />}
       </DialogContent>
     </Dialog>
