@@ -372,6 +372,49 @@ export const ButtonSettingsDialog = ({
             </div>
           </div>
 
+          {/* New section for Text Alignment and Text Wrap */}
+          <div className={cn(
+            "grid grid-cols-4 items-start gap-4 border-t",
+            isMobileMode ? "pt-3.5 mt-1.5" : "pt-4 mt-2"
+          )}>
+            <Label className="text-right col-start-1 pt-2">Текст</Label>
+            <div className="col-span-3 flex flex-col gap-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="textWrap"
+                  checked={editingButton?.textWrap ?? true}
+                  onCheckedChange={(checked) => {
+                    setEditingButton(prev => prev ? { ...prev, textWrap: !!checked } : null);
+                  }}
+                />
+                <Label htmlFor="textWrap" className="font-normal">Перенос текста</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Label className="font-normal">Выравнивание:</Label>
+                <RadioGroup
+                  value={editingButton?.textAlign || 'center'}
+                  onValueChange={(value: 'left' | 'center' | 'right') => {
+                    setEditingButton(prev => prev ? { ...prev, textAlign: value } : null);
+                  }}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="left" id="textAlignLeft" />
+                    <Label htmlFor="textAlignLeft" className="font-normal">Слева</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="center" id="textAlignCenter" />
+                    <Label htmlFor="textAlignCenter" className="font-normal">Центр</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="right" id="textAlignRight" />
+                    <Label htmlFor="textAlignRight" className="font-normal">Справа</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+          </div>
+
           {/* Group for Size (Width, Height) */}
           <div className={cn(
             "grid grid-cols-4 items-center gap-4 border-t",

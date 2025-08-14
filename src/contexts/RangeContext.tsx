@@ -22,7 +22,6 @@ export interface Range {
   id: string;
   name: string;
   hands: Record<string, string>;
-  // Title properties are now part of the range
   showTitle?: boolean;
   titleText?: string;
   titleFontSize?: number;
@@ -79,9 +78,11 @@ interface RangeContextType {
   folders: Folder[];
   actionButtons: ActionButton[];
   editorSettings: EditorSettings;
+  hiddenActionIds: string[];
   setFolders: React.Dispatch<React.SetStateAction<Folder[]>>;
   setActionButtons: React.Dispatch<React.SetStateAction<ActionButton[]>>;
   setEditorSettings: React.Dispatch<React.SetStateAction<EditorSettings>>;
+  setHiddenActionIds: React.Dispatch<React.SetStateAction<string[]>>;
   foldColor: string;
 }
 
@@ -150,6 +151,11 @@ export const RangeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   });
 
+  const [hiddenActionIds, setHiddenActionIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('poker-hidden-action-ids');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [foldColor, setFoldColor] = useState<string>('#6b7280');
 
   useEffect(() => {
@@ -163,6 +169,10 @@ export const RangeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     localStorage.setItem('poker-editor-settings', JSON.stringify(editorSettings));
   }, [editorSettings]);
+
+  useEffect(() => {
+    localStorage.setItem('poker-hidden-action-ids', JSON.stringify(hiddenActionIds));
+  }, [hiddenActionIds]);
 
   useEffect(() => {
     const matrixBgType = editorSettings.matrixBackgroundColor.type;
@@ -182,7 +192,7 @@ export const RangeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [editorSettings]);
 
   return (
-    <RangeContext.Provider value={{ folders, actionButtons, editorSettings, setFolders, setActionButtons, setEditorSettings, foldColor }}>
+    <RangeContext.Provider value={{ folders, actionButtons, editorSettings, hiddenActionIds, setFolders, setActionButtons, setEditorSettings, setHiddenActionIds, foldColor }}>
       {children}
     </RangeContext.Provider>
   );

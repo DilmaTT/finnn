@@ -50,6 +50,11 @@ export const ChartCanvas = ({
           height: Math.max(MIN_BUTTON_DIMENSION, button.height || 0),
           zIndex: activeButtonId === button.id ? 100 : 1,
           color: (button.isFontAdaptive === false && button.fontColor) ? button.fontColor : 'white',
+          display: 'flex', // Ensure flexbox for alignment
+          alignItems: 'center', // Vertical center alignment
+          justifyContent: button.textAlign === 'left' ? 'flex-start' : button.textAlign === 'right' ? 'flex-end' : 'center', // Horizontal alignment
+          padding: '0 8px', // Add some padding to prevent text from touching edges
+          textAlign: button.textAlign, // Apply text-align for text wrapping
         };
 
         if (button.isFontAdaptive === false && button.fontSize) {
@@ -60,7 +65,14 @@ export const ChartCanvas = ({
           <div
             key={button.id}
             style={finalStyle}
-            className="relative flex items-center justify-center rounded-md shadow-md font-semibold group"
+            className={cn(
+              "relative rounded-md shadow-md font-semibold group",
+              {
+                "whitespace-nowrap": !button.textWrap, // Apply whitespace-nowrap if textWrap is false
+                "overflow-hidden": !button.textWrap, // Hide overflow if no wrap
+                "text-ellipsis": !button.textWrap, // Add ellipsis if no wrap
+              }
+            )}
             onMouseDown={(e) => onButtonMouseDown(e, button)}
             onTouchStart={(e) => onButtonTouchStart(e, button)}
             onMouseMove={(e) => onButtonMouseMove(e, button)}

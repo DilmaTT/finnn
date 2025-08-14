@@ -14,6 +14,10 @@ export interface ChartButton {
   type: 'button' | 'label' | 'exit';
   linkedItem?: string; // rangeId for 'button' type
 
+  // New properties for text alignment and wrapping
+  textAlign?: 'left' | 'center' | 'right';
+  textWrap?: boolean;
+
   // Legend/Display options that are specific to the button's context
   showRandomizer?: boolean;
   showLegend?: boolean;

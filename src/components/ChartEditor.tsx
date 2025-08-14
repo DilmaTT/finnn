@@ -148,6 +148,8 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
       linkButtons: Array(6).fill(null).map(() => ({
         enabled: false, text: '', position: 'center', targetRangeId: ''
       })),
+      textAlign: 'center', // New default
+      textWrap: true,      // New default
     };
     setButtons((prev) => [...prev, newButton]);
     setEditingButton(newButton);

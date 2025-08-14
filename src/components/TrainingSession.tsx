@@ -222,12 +222,9 @@ export const TrainingSession = ({ training, onStop }: TrainingSessionProps) => {
 
     const usedActions = new Set(Object.values(activeRange.hands));
     
-    if (button.type === 'simple') {
-      return usedActions.has(button.id);
-    } else if (button.type === 'weighted') {
-      return usedActions.has(button.action1Id) && usedActions.has(button.action2Id);
-    }
-    return false;
+    // A button (simple or weighted) should be shown if its own ID is used in the range.
+    // For weighted buttons, the range stores the weighted button's ID, not its sub-actions.
+    return usedActions.has(button.id);
   });
 
   const handleClassicAnswer = (action: string) => {

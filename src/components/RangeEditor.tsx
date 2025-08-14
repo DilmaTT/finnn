@@ -2,21 +2,21 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { PokerMatrix, getCombinations, TOTAL_POKER_COMBINATIONS } from "./PokerMatrix"; // Import helpers
-import { Plus, Palette, Trash2, Copy, SlidersHorizontal } from "lucide-react"; // Added Copy and SlidersHorizontal
+import { PokerMatrix, getCombinations, TOTAL_POKER_COMBINATIONS } from "./PokerMatrix";
+import { Plus, Trash2, Copy, SlidersHorizontal, Settings, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRangeContext, ActionButton } from "@/contexts/RangeContext";
-import { CreateActionButtonDialog } from "./CreateActionButtonDialog"; // Import the new dialog
+import { CreateActionButtonDialog } from "./CreateActionButtonDialog";
+import { ActionSettingsDialog } from "./ActionSettingsDialog";
+import { TitleSettingsDialog } from "./TitleSettingsDialog"; // Import new dialog
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
-  DialogClose,
   DialogFooter
-} from "@/components/ui/dialog"; // Import Dialog components, including DialogFooter
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,18 +27,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"; // Import AlertDialog components
+} from "@/components/ui/alert-dialog";
 import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from "@/components/ui/accordion"; // Import Accordion components
+} from "@/components/ui/accordion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; // Import DropdownMenu
 
 interface Range {
   id: string;
   name: string;
   hands: Record<string, string>;
+  showTitle?: boolean;
+  titleText?: string;
+  titleFontSize?: number;
+  titleAlignment?: 'left' | 'center';
 }
 
 interface Folder {
@@ -51,9 +61,8 @@ interface RangeEditorProps {
   isMobileMode?: boolean;
 }
 
-// Define FolderRangeTreeProps interface
 interface FolderRangeTreeProps {
-  folders: Folder[]; // This will always be an array, even if it contains only one folder
+  folders: Folder[];
   selectedRange: string;
   setSelectedRange: (id: string) => void;
   editingFolderId: string | null;
@@ -65,15 +74,15 @@ interface FolderRangeTreeProps {
   addRange: (folderId: string) => void;
   deleteFolder: (folderId: string) => void;
   deleteRange: (rangeId: string) => void;
-  cloneRange: (folderId: string, rangeToClone: Range) => void; // Added cloneRange
+  cloneRange: (folderId: string, rangeToClone: Range) => void;
+  onOpenTitleSettings: (range: Range) => void; // New prop
   isMobileMode: boolean;
   inDialog: boolean;
-  totalFoldersCount: number; // New prop
-  openFolderId: string | null; // New prop for Accordion
-  setOpenFolderId: (id: string | null) => void; // New prop for Accordion
+  totalFoldersCount: number;
+  openFolderId: string | null;
+  setOpenFolderId: (id: string | null) => void;
 }
 
-// New component for the folder/range tree structure content
 const FolderRangeTreeContent = ({
   folders,
   selectedRange,
@@ -87,7 +96,8 @@ const FolderRangeTreeContent = ({
   addRange,
   deleteFolder,
   deleteRange,
-  cloneRange, // Destructure cloneRange
+  cloneRange,
+  onOpenTitleSettings, // Destructure new prop
   isMobileMode,
   inDialog,
   totalFoldersCount,
@@ -98,7 +108,10 @@ const FolderRangeTreeContent = ({
     <Accordion type="single" collapsible value={openFolderId || undefined} onValueChange={setOpenFolderId}>
       {folders.map((folder) => (
         <AccordionItem key={folder.id} value={folder.id}>
-          <AccordionTrigger className="flex items-center justify-between mb-1 py-2 hover:no-underline">
+          <AccordionTrigger className={cn(
+            "flex items-center justify-between mb-1 hover:no-underline",
+            isMobileMode ? "py-2" : "py-[0.28125rem]" // Adjusted padding for desktop (25% reduction from py-1.5)
+          )}>
             {editingFolderId === folder.id ? (
               <Input
                 value={folder.name}
@@ -157,7 +170,6 @@ const FolderRangeTreeContent = ({
                   </AlertDialogContent>
                 </AlertDialog>
               )}
-              {/* ChevronDown from AccordionTrigger is automatically added here */}
             </div>
           </AccordionTrigger>
           
@@ -167,12 +179,12 @@ const FolderRangeTreeContent = ({
                   <div
                     key={range.id}
                     className={cn(
-                      "flex items-center justify-between p-2 rounded cursor-pointer",
+                      "flex items-center justify-between rounded cursor-pointer",
+                      isMobileMode ? "p-2" : "p-[0.28125rem]", // Adjusted padding for desktop (25% reduction from p-1.5)
                       selectedRange === range.id ? "bg-primary/10" : "hover:bg-muted/50"
                     )}
                     onClick={() => {
                       setSelectedRange(range.id);
-                      // Do NOT close dialog here, only update selectedRange
                     }}
                   >
                     <span
@@ -215,19 +227,40 @@ const FolderRangeTreeContent = ({
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
-                      {folder.ranges.length > 1 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteRange(range.id);
-                          }}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
+                      
+                      <AlertDialog>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={(e) => e.stopPropagation()}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent onClick={(e) => e.stopPropagation()} side="bottom" align="end">
+                            <DropdownMenuItem onClick={() => onOpenTitleSettings(range)}>
+                              Настроить заголовок
+                            </DropdownMenuItem>
+                            {folder.ranges.length > 1 && (
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-red-500 focus:text-red-500 focus:bg-red-500/10">
+                                  Удалить ренж
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Это действие безвозвратно удалит ренж "{range.name}".
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Отмена</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteRange(range.id)}>Удалить</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
               ))}
@@ -242,25 +275,27 @@ const FolderRangeTreeContent = ({
 export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
   const [editingButton, setEditingButton] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
-  const { folders, setFolders, actionButtons, setActionButtons, foldColor } = useRangeContext();
+  const { folders, setFolders, actionButtons, setActionButtons, foldColor, hiddenActionIds } = useRangeContext();
   
   const [selectedRange, setSelectedRange] = useState<string>(folders[0]?.ranges[0]?.id || '');
   const [activeAction, setActiveAction] = useState(actionButtons[0]?.id || 'raise');
   const [showRangeSelectorDialog, setShowRangeSelectorDialog] = useState(false);
-  const [openFolderId, setOpenFolderId] = useState<string | null>(null); // State for Accordion
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
   const [isCreateActionDialogOpen, setCreateActionDialogOpen] = useState(false);
+  const [isActionSettingsOpen, setActionSettingsOpen] = useState(false);
+  const [titleSettingsRange, setTitleSettingsRange] = useState<Range | null>(null);
 
-  // Effect to set the open folder based on selectedRange
+  const visibleActionButtons = actionButtons.filter(b => !hiddenActionIds.includes(b.id));
+
   useEffect(() => {
     const currentFolder = folders.find(f => f.ranges.some(r => r.id === selectedRange));
     if (currentFolder) {
       setOpenFolderId(currentFolder.id);
     } else if (folders.length > 0) {
-      // If selected range is somehow not found (e.g., deleted), default to the first folder
       setOpenFolderId(folders[0].id);
-      setSelectedRange(folders[0].ranges[0]?.id || ''); // Also update selectedRange
+      setSelectedRange(folders[0].ranges[0]?.id || '');
     } else {
-      setOpenFolderId(null); // No folders
+      setOpenFolderId(null);
     }
   }, [selectedRange, folders]);
 
@@ -269,7 +304,6 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
       const range = folder.ranges.find(r => r.id === selectedRange);
       if (range) return { folder, range };
     }
-    // Fallback if selectedRange is invalid or not found
     if (folders.length > 0 && folders[0].ranges.length > 0) {
       return { folder: folders[0], range: folders[0].ranges[0] };
     }
@@ -345,7 +379,11 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
     const newRange: Range = {
       id: Date.now().toString(),
       name: `${rangeToClone.name} +clone`,
-      hands: { ...rangeToClone.hands } // Deep copy hands
+      hands: { ...rangeToClone.hands },
+      showTitle: rangeToClone.showTitle,
+      titleText: rangeToClone.titleText,
+      titleFontSize: rangeToClone.titleFontSize,
+      titleAlignment: rangeToClone.titleAlignment,
     };
     setFolders(prev => prev.map(folder =>
       folder.id === folderId
@@ -360,13 +398,12 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
       let newSelectedRange = selectedRange;
       const updatedFolders = prev.map(folder => {
         const updatedRanges = folder.ranges.filter(range => range.id !== rangeId);
-        if (updatedRanges.length === 0 && folder.id !== '1') { // Prevent deleting the last range in the default folder
+        if (updatedRanges.length === 0 && folder.id !== '1') {
           return null;
         }
         return { ...folder, ranges: updatedRanges };
       }).filter(Boolean) as Folder[];
 
-      // If the deleted range was selected, find a new one to select
       if (newSelectedRange === rangeId) {
         let foundNew = false;
         for (const folder of updatedFolders) {
@@ -376,7 +413,6 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
             break;
           }
         }
-        // If no ranges left at all, create a default one
         if (!foundNew) {
           const newFolder: Folder = {
             id: Date.now().toString(),
@@ -388,7 +424,7 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
             }]
           };
           newSelectedRange = newFolder.ranges[0].id;
-          return [newFolder]; // Replace all folders with this new default
+          return [newFolder];
         }
       }
       setSelectedRange(newSelectedRange);
@@ -408,15 +444,11 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
   };
 
   const deleteActionButton = (id: string) => {
-    if (actionButtons.length <= 1) {
-      return; // Prevent deleting the last action button.
-    }
+    if (actionButtons.length <= 1) return;
 
     const buttonToDelete = actionButtons.find(b => b.id === id);
     if (!buttonToDelete) return;
 
-    // Collect all action IDs that need to be deleted.
-    // This includes the selected action and any weighted actions that depend on it if it's a simple action.
     const idsToDelete = new Set<string>([id]);
     if (buttonToDelete.type === 'simple') {
       actionButtons.forEach(btn => {
@@ -426,7 +458,6 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
       });
     }
 
-    // Reset hands that use any of the deleted actions across all ranges.
     setFolders(prevFolders =>
       prevFolders.map(folder => ({
         ...folder,
@@ -434,7 +465,7 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
           const newHands = { ...range.hands };
           Object.entries(newHands).forEach(([hand, actionId]) => {
             if (idsToDelete.has(actionId)) {
-              delete newHands[hand]; // This effectively reverts it to "fold"
+              delete newHands[hand];
             }
           });
           return { ...range, hands: newHands };
@@ -442,7 +473,6 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
       }))
     );
 
-    // Now, remove the button(s) and update the active action if needed.
     setActionButtons(prevButtons => {
       const updatedButtons = prevButtons.filter(button => !idsToDelete.has(button.id));
       if (idsToDelete.has(activeAction)) {
@@ -459,8 +489,7 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
     const newHands = { ...currentRange.hands };
     if (mode === 'select') {
       newHands[hand] = activeAction;
-    } else { // mode === 'deselect'
-      // Только удаляем, если текущее действие совпадает с активным
+    } else {
       if (newHands[hand] === activeAction) {
         delete newHands[hand];
       }
@@ -474,12 +503,21 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
     })));
   };
 
+  const handleUpdateRangeSettings = (updatedSettings: Partial<Range>) => {
+    if (!titleSettingsRange) return;
+    setFolders(prev => prev.map(folder => ({
+        ...folder,
+        ranges: folder.ranges.map(range =>
+            range.id === titleSettingsRange.id ? { ...range, ...updatedSettings } : range
+        )
+    })));
+    setTitleSettingsRange(null);
+  };
+
   const { folder: currentFolder, range: currentRange } = getCurrentRangeAndFolder();
 
   const getSelectedCombinationsCount = () => {
-    if (!currentRange || !currentRange.hands) {
-      return 0;
-    }
+    if (!currentRange || !currentRange.hands) return 0;
     let count = 0;
     Object.entries(currentRange.hands).forEach(([hand, action]) => {
       const combinations = getCombinations(hand);
@@ -496,121 +534,54 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
   };
 
   const renderFolderAndRangeManagement = (inDialog: boolean = false) => (
-    <div className={cn(
-      "space-y-4",
-      inDialog ? "flex-1 flex flex-col" : ""
-    )}>
+    <div className={cn("space-y-4", inDialog ? "flex-1 flex flex-col" : "")}>
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">
           {isMobileMode || inDialog ? "Создать папку" : "Создать"}
         </h2>
-        {(isMobileMode || inDialog) ? (
-          <Button size="sm" onClick={addFolder} variant="outline">
-            <Plus className="h-4 w-4" />  
-          </Button>
-        ) : (
-          <Button size="sm" onClick={addFolder} variant="ghost" className="h-6 w-6 p-0">
-            <Plus className="h-4 w-4" />
-          </Button>
-        )}
+        <Button size="sm" onClick={addFolder} variant={isMobileMode || inDialog ? "outline" : "ghost"} className={cn(!(isMobileMode || inDialog) && "h-6 w-6 p-0")}>
+          <Plus className="h-4 w-4" />  
+        </Button>
       </div>
       
       <div className={cn(
         "space-y-2 overflow-y-auto",
-        // Apply max-height only when NOT in dialog and in mobile mode
-        !inDialog && isMobileMode && "max-h-64",
-        inDialog ? "flex-1" : ""
+        !inDialog && isMobileMode && "max-h-64", // Mobile mode, not in dialog
+        inDialog ? "flex-1 min-h-0" : "", // In dialog, added min-h-0
+        !isMobileMode && !inDialog && "max-h-[calc(100vh-416px)]" // Desktop mode, not in dialog
       )}>
-        {inDialog ? (
-          // Single adaptive container for dialog
-          <div className="space-y-2">
-            <FolderRangeTreeContent
-              folders={folders}
-              selectedRange={selectedRange}
-              setSelectedRange={setSelectedRange}
-              editingFolderId={editingFolderId}
-              setEditingFolderId={setEditingFolderId}
-              editingButton={editingButton}
-              setEditingButton={setEditingButton}
-              updateFolderName={updateFolderName}
-              updateRangeName={updateRangeName}
-              addRange={addRange}
-              deleteFolder={deleteFolder}
-              deleteRange={deleteRange}
-              cloneRange={cloneRange} // Pass cloneRange
-              isMobileMode={isMobileMode}
-              inDialog={inDialog}
-              totalFoldersCount={folders.length}
-              openFolderId={openFolderId}
-              setOpenFolderId={setOpenFolderId}
-            />
-          </div>
-        ) : (
-          // Original rendering for PC mode (single Card) or mobile (multiple Cards)
-          (!isMobileMode ? (
-            <Card className="p-3 space-y-2">
-              <FolderRangeTreeContent
-                folders={folders}
-                selectedRange={selectedRange}
-                setSelectedRange={setSelectedRange}
-                editingFolderId={editingFolderId}
-                setEditingFolderId={setEditingFolderId}
-                editingButton={editingButton}
-                setEditingButton={setEditingButton}
-                updateFolderName={updateFolderName}
-                updateRangeName={updateRangeName}
-                addRange={addRange}
-                deleteFolder={deleteFolder}
-                deleteRange={deleteRange}
-                cloneRange={cloneRange} // Pass cloneRange
-                isMobileMode={isMobileMode}
-                inDialog={inDialog}
-                totalFoldersCount={folders.length}
-                openFolderId={openFolderId}
-                setOpenFolderId={setOpenFolderId}
-              />
-            </Card>
-          ) : (
-            // Mobile mode (not in dialog) still uses individual cards for each folder
-            folders.map((folder) => (
-              <Card key={folder.id} className="p-3">
-                {/* For mobile main view, we don't use Accordion per folder,
-                    but the FolderRangeTreeContent is designed to handle a single folder array */}
-                <FolderRangeTreeContent
-                  folders={[folder]} // Pass single folder in an array
-                  selectedRange={selectedRange}
-                  setSelectedRange={setSelectedRange}
-                  editingFolderId={editingFolderId}
-                  setEditingFolderId={setEditingFolderId}
-                  editingButton={editingButton}
-                  setEditingButton={setEditingButton}
-                  updateFolderName={updateFolderName}
-                  updateRangeName={updateRangeName}
-                  addRange={addRange}
-                  deleteFolder={deleteFolder}
-                  deleteRange={deleteRange}
-                  cloneRange={cloneRange} // Pass cloneRange
-                  isMobileMode={isMobileMode}
-                  inDialog={inDialog}
-                  totalFoldersCount={folders.length}
-                  openFolderId={openFolderId}
-                  setOpenFolderId={setOpenFolderId}
-                />
-              </Card>
-            ))
-          ))
-        )}
+        <FolderRangeTreeContent
+          folders={folders}
+          selectedRange={selectedRange}
+          setSelectedRange={setSelectedRange}
+          editingFolderId={editingFolderId}
+          setEditingFolderId={setEditingFolderId}
+          editingButton={editingButton}
+          setEditingButton={setEditingButton}
+          updateFolderName={updateFolderName}
+          updateRangeName={updateRangeName}
+          addRange={addRange}
+          deleteFolder={deleteFolder}
+          deleteRange={deleteRange}
+          cloneRange={cloneRange}
+          onOpenTitleSettings={(range) => setTitleSettingsRange(range)}
+          isMobileMode={isMobileMode}
+          inDialog={inDialog}
+          totalFoldersCount={folders.length}
+          openFolderId={openFolderId}
+          setOpenFolderId={setOpenFolderId}
+        />
       </div>
     </div>
   );
 
   const getActionColor = (actionId: string, allButtons: ActionButton[]): string => {
-    if (actionId === 'fold') return foldColor; // Use foldColor from context
+    if (actionId === 'fold') return foldColor;
     const button = allButtons.find(b => b.id === actionId);
     if (button && button.type === 'simple') {
       return button.color;
     }
-    return '#ffffff'; // Fallback color
+    return '#ffffff';
   };
 
   const getActionButtonStyle = (button: ActionButton) => {
@@ -628,35 +599,32 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
   };
 
   return (
-    <div className={cn(
-      "bg-background",
-      isMobileMode ? "h-full flex flex-col" : "flex h-screen"
-    )}>
+    <div className={cn("bg-background", isMobileMode ? "h-full flex flex-col" : "flex h-screen")}>
       <CreateActionButtonDialog 
         open={isCreateActionDialogOpen}
         onOpenChange={setCreateActionDialogOpen}
         onSave={handleSaveNewAction}
       />
+      <ActionSettingsDialog
+        open={isActionSettingsOpen}
+        onOpenChange={setActionSettingsOpen}
+      />
+      <TitleSettingsDialog
+        open={!!titleSettingsRange}
+        onOpenChange={(open) => !open && setTitleSettingsRange(null)}
+        range={titleSettingsRange}
+        onSave={handleUpdateRangeSettings}
+      />
 
       {isMobileMode ? (
         // MOBILE LAYOUT
         <>
-          {/* Main scrollable content */}
           <div className="flex-1 overflow-y-auto py-4">
             <div className="mx-auto max-w-full">
-              {/* Header: Folder/Range Name and Statistics */}
               <div className="flex justify-between items-end mb-4 px-4">
                 <div className="text-left">
-                  {currentFolder && (
-                    <h2 className="text-base font-bold text-muted-foreground mb-px">
-                      {currentFolder.name}
-                    </h2>
-                  )}
-                  {currentRange && (
-                    <h1 className="text-sm font-normal ml-1">
-                      {currentRange.name}
-                    </h1>
-                  )}
+                  {currentFolder && <h2 className="text-base font-bold text-muted-foreground mb-px">{currentFolder.name}</h2>}
+                  {currentRange && <h1 className="text-sm font-normal ml-1">{currentRange.name}</h1>}
                 </div>
                 {currentRange && (
                   <div className="bg-background/80 px-2 py-1 rounded text-xs font-mono flex items-center gap-1 z-10">
@@ -666,7 +634,6 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
                 )}
               </div>
 
-              {/* Poker Matrix */}
               {currentRange && (
                 <div className="overflow-x-auto">
                   <PokerMatrix
@@ -678,27 +645,31 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
                 </div>
               )}
 
-              {/* Action Buttons Block - MOVED HERE */}
               <div className="bg-card rounded-lg p-3 mt-4 mx-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-medium">Действия</h3>
-                    <Button size="sm" variant="outline" onClick={() => setCreateActionDialogOpen(true)}>
-                      <Plus className="h-3 w-3" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setActionSettingsOpen(true)}>
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setCreateActionDialogOpen(true)}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2">
-                    {actionButtons.map((button) => (
+                    {visibleActionButtons.map((button) => (
                       <div key={button.id} className="flex items-center gap-2">
                         <Button
                           size="sm"
                           onClick={() => setActiveAction(button.id)}
                           style={getActionButtonStyle(button)}
                           className={cn(
-                            "flex-1 min-w-0 text-primary-foreground border-transparent",
-                            "hover:opacity-90 transition-opacity",
-                            activeAction === button.id && "ring-2 ring-offset-2 ring-offset-card ring-primary"
+                            "flex-1 min-w-0 text-primary-foreground border-transparent hover:opacity-90 transition-opacity text-center whitespace-normal",
+                            activeAction === button.id && "ring-2 ring-offset-2 ring-offset-card ring-primary",
+                            "h-auto min-h-[1.5rem] py-1"
                           )}
                         >
                           {editingButton === button.id ? (
@@ -706,46 +677,25 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
                               value={button.name}
                               onChange={(e) => updateActionButton(button.id, 'name', e.target.value)}
                               onBlur={() => setEditingButton(null)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') setEditingButton(null);
-                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') setEditingButton(null); }}
                               className="h-5 text-xs border-none bg-transparent p-0 focus:bg-background text-center w-full"
                               autoFocus
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
-                            <span 
-                              onDoubleClick={(e) => {
-                                e.stopPropagation();
-                                setEditingButton(button.id);
-                              }}
-                              className="cursor-text truncate px-1"
-                            >
+                            <span onDoubleClick={(e) => { e.stopPropagation(); setEditingButton(button.id); }} className="cursor-text px-1">
                               {button.name}
                             </span>
                           )}
                         </Button>
                         <div className="flex gap-1">
                           {button.type === 'simple' ? (
-                            <input
-                              type="color"
-                              value={button.color}
-                              onChange={(e) => updateActionButton(button.id, 'color', e.target.value)}
-                              className="w-6 h-6 rounded border cursor-pointer"
-                            />
+                            <input type="color" value={button.color} onChange={(e) => updateActionButton(button.id, 'color', e.target.value)} className="w-6 h-6 rounded border cursor-pointer" />
                           ) : (
-                            <div className="w-6 h-6 flex items-center justify-center">
-                              <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                            </div>
+                            <div className="w-6 h-6 flex items-center justify-center"><SlidersHorizontal className="h-4 w-4 text-muted-foreground" /></div>
                           )}
                           {actionButtons.length > 1 && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => deleteActionButton(button.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => deleteActionButton(button.id)}><Trash2 className="h-3 w-3" /></Button>
                           )}
                         </div>
                       </div>
@@ -756,23 +706,47 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
             </div>
           </div>
 
-          {/* Fixed Bottom Bar */}
           <div className="bg-card border-t p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
             <Dialog open={showRangeSelectorDialog} onOpenChange={setShowRangeSelectorDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full">
-                  Выбрать ренж
-                </Button>
+                <Button variant="outline" className="w-full">Выбрать ренж</Button>
               </DialogTrigger>
               <DialogContent mobileFullscreen={true} className="flex flex-col">
-                <DialogHeader>
-                  <DialogTitle>Выбрать ренж</DialogTitle>
-                </DialogHeader>
-                {renderFolderAndRangeManagement(true)}
+                <DialogHeader className="p-4 pb-0"><DialogTitle>Выбрать ренж</DialogTitle></DialogHeader>
+                <div className="flex-1 flex flex-col p-4 pt-2 min-h-0">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold">Создать папку</h2>
+                    <Button size="sm" onClick={addFolder} variant="outline">
+                      <Plus className="h-4 w-4" />  
+                    </Button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto min-h-0">
+                    <FolderRangeTreeContent
+                      folders={folders}
+                      selectedRange={selectedRange}
+                      setSelectedRange={setSelectedRange}
+                      editingFolderId={editingFolderId}
+                      setEditingFolderId={setEditingFolderId}
+                      editingButton={editingButton}
+                      setEditingButton={setEditingButton}
+                      updateFolderName={updateFolderName}
+                      updateRangeName={updateRangeName}
+                      addRange={addRange}
+                      deleteFolder={deleteFolder}
+                      deleteRange={deleteRange}
+                      cloneRange={cloneRange}
+                      onOpenTitleSettings={(range) => setTitleSettingsRange(range)}
+                      isMobileMode={true}
+                      inDialog={true}
+                      totalFoldersCount={folders.length}
+                      openFolderId={openFolderId}
+                      setOpenFolderId={setOpenFolderId}
+                    />
+                  </div>
+                </div>
                 <DialogFooter className="mt-auto p-4 border-t">
-                  <Button onClick={() => setShowRangeSelectorDialog(false)} className="w-full">
-                    Выбрать
-                  </Button>
+                  <Button onClick={() => setShowRangeSelectorDialog(false)} className="w-full">Выбрать</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -781,33 +755,31 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
       ) : (
         // DESKTOP LAYOUT
         <>
-          {/* Sidebar */}
-          <div className="bg-card space-y-4 w-80 border-r flex flex-col p-4">
-            {/* Folder section */}
+          <div className="bg-card w-80 border-r flex flex-col p-4">
             <div className="space-y-4 order-1">
               {renderFolderAndRangeManagement()}
             </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-3 border-t order-2 pt-4">
+            <div className="space-y-3 border-t order-2 pt-4 mt-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Действия</h3>
-                <Button size="sm" variant="outline" onClick={() => setCreateActionDialogOpen(true)}>
-                  <Plus className="h-3 w-3" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setActionSettingsOpen(true)}><Settings className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => setCreateActionDialogOpen(true)}><Plus className="h-3 w-3" /></Button>
+                </div>
               </div>
               
-              <div className="space-y-2">
-                {actionButtons.map((button) => (
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                {visibleActionButtons.map((button) => (
                   <div key={button.id} className="flex items-center gap-2">
                     <Button
                       size="sm"
                       onClick={() => setActiveAction(button.id)}
                       style={getActionButtonStyle(button)}
                       className={cn(
-                        "flex-1 min-w-0 text-primary-foreground border-transparent",
-                        "hover:opacity-90 transition-opacity",
-                        activeAction === button.id && "ring-2 ring-offset-2 ring-offset-card ring-primary"
+                        "flex-1 min-w-0 text-primary-foreground border-transparent hover:opacity-90 transition-opacity text-center whitespace-normal",
+                        activeAction === button.id && "ring-2 ring-offset-2 ring-offset-card ring-primary",
+                        "h-auto min-h-[1.75rem] py-1"
                       )}
                     >
                       {editingButton === button.id ? (
@@ -815,46 +787,25 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
                           value={button.name}
                           onChange={(e) => updateActionButton(button.id, 'name', e.target.value)}
                           onBlur={() => setEditingButton(null)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') setEditingButton(null);
-                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') setEditingButton(null); }}
                           className="h-5 text-xs border-none bg-transparent p-0 focus:bg-background text-center w-full"
                           autoFocus
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
-                        <span 
-                          onDoubleClick={(e) => {
-                            e.stopPropagation();
-                            setEditingButton(button.id);
-                          }}
-                          className="cursor-text truncate px-1"
-                        >
+                        <span onDoubleClick={(e) => { e.stopPropagation(); setEditingButton(button.id); }} className="cursor-text px-1">
                           {button.name}
                         </span>
                       )}
                     </Button>
                     <div className="flex gap-1">
                       {button.type === 'simple' ? (
-                        <input
-                          type="color"
-                          value={button.color}
-                          onChange={(e) => updateActionButton(button.id, 'color', e.target.value)}
-                          className="w-6 h-6 rounded border cursor-pointer"
-                        />
+                        <input type="color" value={button.color} onChange={(e) => updateActionButton(button.id, 'color', e.target.value)} className="w-6 h-6 rounded border cursor-pointer" />
                       ) : (
-                        <div className="w-6 h-6 flex items-center justify-center">
-                          <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                        <div className="w-6 h-6 flex items-center justify-center"><SlidersHorizontal className="h-4 w-4 text-muted-foreground" /></div>
                       )}
                       {actionButtons.length > 1 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteActionButton(button.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => deleteActionButton(button.id)}><Trash2 className="h-3 w-3" /></Button>
                       )}
                     </div>
                   </div>
@@ -863,23 +814,13 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
             </div>
           </div>
 
-          {/* Main Content */}
           <div className="flex-1 p-6">
             <div className="mx-auto max-w-4xl">
               <div className="space-y-4 lg:w-[63%] mx-auto">
-                {/* Header: Folder/Range Name and Statistics */}
                 <div className="flex justify-between items-end">
                   <div className="text-left">
-                    {currentFolder && (
-                      <h2 className="text-base font-bold text-muted-foreground mb-px">
-                        {currentFolder.name}
-                      </h2>
-                    )}
-                    {currentRange && (
-                      <h1 className="text-sm font-normal ml-1">
-                        {currentRange.name}
-                      </h1>
-                    )}
+                    {currentFolder && <h2 className="text-base font-bold text-muted-foreground mb-px">{currentFolder.name}</h2>}
+                    {currentRange && <h1 className="text-sm font-normal ml-1">{currentRange.name}</h1>}
                   </div>
                   {currentRange && (
                     <div className="bg-background/80 px-2 py-1 rounded text-xs font-mono flex items-center gap-1 z-10">
@@ -890,9 +831,7 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
                 </div>
 
                 {currentRange && (
-                  <div className={cn(
-                    isMobileMode && "overflow-x-auto"
-                  )}>
+                  <div className={cn(isMobileMode && "overflow-x-auto")}>
                     <PokerMatrix
                       selectedHands={currentRange.hands}
                       onHandSelect={onHandSelect}

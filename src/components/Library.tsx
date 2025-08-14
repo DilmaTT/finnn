@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useRangeContext } from "@/contexts/RangeContext";
 import { PokerMatrix } from "@/components/PokerMatrix";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LibraryProps {
   isMobileMode?: boolean;
@@ -327,6 +328,7 @@ export const Library = ({ isMobileMode = false }: LibraryProps) => {
             </DialogHeader>
             
             <CellConfigForm
+              isMobile={isMobile}
               ranges={availableRanges}
               onSave={(rangeId, shortName, color, shape) => {
                 if (selectedCell !== null) {
@@ -377,9 +379,10 @@ interface CellConfigFormProps {
   onDelete: () => void;
   existingCell?: CellData;
   colorOptions: string[];
+  isMobile: boolean;
 }
 
-const CellConfigForm = ({ ranges, onSave, onCancel, onDelete, existingCell, colorOptions }: CellConfigFormProps) => {
+const CellConfigForm = ({ ranges, onSave, onCancel, onDelete, existingCell, colorOptions, isMobile }: CellConfigFormProps) => {
   const [selectedRangeId, setSelectedRangeId] = useState(existingCell?.rangeId || '');
   const [shortName, setShortName] = useState(existingCell?.shortName || '');
   const [color, setColor] = useState(existingCell?.color || colorOptions[0]);
@@ -387,8 +390,8 @@ const CellConfigForm = ({ ranges, onSave, onCancel, onDelete, existingCell, colo
 
   const canSave = selectedRangeId && shortName.trim();
 
-  return (
-    <div className="space-y-4">
+  const fields = (
+    <>
       <div>
         <label className="text-sm font-medium mb-2 block">Выберите ренж</label>
         <Select value={selectedRangeId} onValueChange={setSelectedRangeId}>
@@ -453,26 +456,52 @@ const CellConfigForm = ({ ranges, onSave, onCancel, onDelete, existingCell, colo
           </Button>
         </div>
       </div>
+    </>
+  );
 
-      <div className="flex justify-between pt-4">
-        <div>
-          {existingCell && (
-            <Button variant="destructive" onClick={onDelete}>
-              Удалить
-            </Button>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onCancel}>
-            Отмена
+  const buttons = (
+    <div className="flex justify-between w-full">
+      <div>
+        {existingCell && (
+          <Button variant="destructive" onClick={onDelete}>
+            Удалить
           </Button>
-          <Button 
-            onClick={() => canSave && onSave(selectedRangeId, shortName, color, shape)}
-            disabled={!canSave}
-          >
-            Сохранить
-          </Button>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onCancel}>
+          Отмена
+        </Button>
+        <Button 
+          onClick={() => canSave && onSave(selectedRangeId, shortName, color, shape)}
+          disabled={!canSave}
+        >
+          Сохранить
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col flex-1 min-h-0">
+        <ScrollArea className="flex-1 -mx-6">
+          <div className="space-y-4 px-6 pb-4">
+            {fields}
+          </div>
+        </ScrollArea>
+        <div className="pt-4 border-t -mx-6 px-6 pb-6">
+          {buttons}
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {fields}
+      <div className="pt-4">
+        {buttons}
       </div>
     </div>
   );
