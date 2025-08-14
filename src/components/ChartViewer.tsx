@@ -308,6 +308,12 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
                 width: Math.max(5, button.width || 0),
                 height: Math.max(5, button.height || 0),
                 color: (button.isFontAdaptive === false && button.fontColor) ? button.fontColor : 'white',
+                display: 'flex', // Ensure flexbox for alignment
+                flexDirection: 'column', // Allow multiple lines
+                alignItems: button.textAlign === 'left' ? 'flex-start' : button.textAlign === 'right' ? 'flex-end' : 'center', // Horizontal alignment
+                justifyContent: 'center', // Vertical center alignment
+                padding: '0 8px', // Add some padding to prevent text from touching edges
+                textAlign: button.textAlign, // Apply text-align for text wrapping
               };
 
               if (button.isFontAdaptive === false && button.fontSize) {
@@ -319,12 +325,23 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
                   key={button.id}
                   style={finalStyle}
                   className={cn(
-                    "flex items-center justify-center rounded-md shadow-md font-semibold z-20",
+                    "rounded-md shadow-md font-semibold z-20",
+                    {
+                      "whitespace-nowrap": !button.textWrap, // Apply whitespace-nowrap if textWrap is false
+                      "overflow-hidden": !button.textWrap, // Hide overflow if no wrap
+                      "text-ellipsis": !button.textWrap, // Add ellipsis if no wrap
+                    },
                     button.type !== 'label' && "cursor-pointer hover:opacity-90 transition-opacity"
                   )}
                   onClick={() => handleButtonClick(button)}
                 >
-                  {button.name}
+                  <span style={{ lineHeight: '0.9em' }}>{button.name}</span>
+                  {button.showNameLine2 && button.nameLine2 && (
+                    <span style={{ lineHeight: '0.9em' }}>{button.nameLine2}</span>
+                  )}
+                  {button.showNameLine3 && button.nameLine3 && (
+                    <span style={{ lineHeight: '0.9em' }}>{button.nameLine3}</span>
+                  )}
                 </div>
               );
             })}
@@ -401,13 +418,14 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
                     "mt-4 flex",
                     linkButtonContainerPositionClass[activeButton.linkButtons[0].position]
                   )}>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-[0.625rem]">
                       {activeButton.linkButtons.map((linkButton, index) => (
                         linkButton.enabled && linkButton.targetRangeId && (
                           <Button
                             key={index}
                             onClick={() => handleLinkButtonClick(linkButton.targetRangeId)}
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold h-8 px-2 text-xs"
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold h-11 px-2.5"
+                            style={{ fontSize: '14.6205px' }} // Decreased by 10% from 16.245px
                           >
                             {linkButton.text || "Перейти"}
                           </Button>

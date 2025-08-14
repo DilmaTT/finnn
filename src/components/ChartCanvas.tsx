@@ -51,8 +51,9 @@ export const ChartCanvas = ({
           zIndex: activeButtonId === button.id ? 100 : 1,
           color: (button.isFontAdaptive === false && button.fontColor) ? button.fontColor : 'white',
           display: 'flex', // Ensure flexbox for alignment
-          alignItems: 'center', // Vertical center alignment
-          justifyContent: button.textAlign === 'left' ? 'flex-start' : button.textAlign === 'right' ? 'flex-end' : 'center', // Horizontal alignment
+          flexDirection: 'column', // Allow multiple lines
+          alignItems: button.textAlign === 'left' ? 'flex-start' : button.textAlign === 'right' ? 'flex-end' : 'center', // Horizontal alignment
+          justifyContent: 'center', // Vertical center alignment
           padding: '0 8px', // Add some padding to prevent text from touching edges
           textAlign: button.textAlign, // Apply text-align for text wrapping
         };
@@ -78,7 +79,13 @@ export const ChartCanvas = ({
             onMouseMove={(e) => onButtonMouseMove(e, button)}
             onMouseLeave={onButtonMouseLeave}
           >
-            {button.name}
+            <span style={{ lineHeight: '0.9em' }}>{button.name}</span>
+            {button.showNameLine2 && button.nameLine2 && (
+              <span style={{ lineHeight: '0.9em' }}>{button.nameLine2}</span>
+            )}
+            {button.showNameLine3 && button.nameLine3 && (
+              <span style={{ lineHeight: '0.9em' }}>{button.nameLine3}</span>
+            )}
             <Button
               variant="ghost"
               size="icon"

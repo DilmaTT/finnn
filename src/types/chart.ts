@@ -3,6 +3,10 @@ import { StoredRange } from './range';
 export interface ChartButton {
   id: string;
   name: string;
+  nameLine2?: string; // New: Second line of text
+  nameLine3?: string; // New: Third line of text
+  showNameLine2?: boolean; // New: Flag to show second line
+  showNameLine3?: boolean; // New: Flag to show third line
   x: number;
   y: number;
   width: number;

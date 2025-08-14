@@ -146,7 +146,7 @@ export const ButtonSettingsDialog = ({
         </DialogHeader>
         <div className={cn(
           "grid",
-          isMobileMode ? "gap-3.5 py-3.5" : "gap-4 py-4"
+          isMobileMode ? "gap-3 py-3" : "gap-3.5 py-3.5"
         )}>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="buttonName" className="text-right">
@@ -156,9 +156,65 @@ export const ButtonSettingsDialog = ({
               id="buttonName"
               value={editingButton?.name || ""}
               onChange={(e) => setEditingButton(prev => prev ? { ...prev, name: e.target.value } : null)}
-              className="col-span-3"
+              className="col-span-3 h-7"
             />
           </div>
+
+          {/* New: Second and Third Name Lines - Label and checkboxes on one horizontal line */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right whitespace-nowrap">Доп. строки</Label>
+            <div className="col-span-3 flex items-center gap-x-4"> {/* This div will hold the checkboxes horizontally */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="showNameLine2"
+                  checked={editingButton?.showNameLine2 ?? false}
+                  onCheckedChange={(checked) => {
+                    setEditingButton(prev => prev ? { ...prev, showNameLine2: !!checked } : null);
+                  }}
+                />
+                <Label htmlFor="showNameLine2" className="font-normal">
+                  Вторая строка
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="showNameLine3"
+                  checked={editingButton?.showNameLine3 ?? false}
+                  onCheckedChange={(checked) => {
+                    setEditingButton(prev => prev ? { ...prev, showNameLine3: !!checked } : null);
+                  }}
+                />
+                <Label htmlFor="showNameLine3" className="font-normal">
+                  Третья строка
+                </Label>
+              </div>
+            </div>
+          </div>
+          {/* Inputs for second and third name lines, aligned below the checkboxes */}
+          <div className="grid grid-cols-4 items-start gap-4 -mt-2"> {/* Adjusted negative margin to increase vertical gap */}
+            <div className="col-start-2 col-span-3 flex flex-col gap-1.5"> {/* Adjusted gap to increase vertical gap */}
+              {editingButton?.showNameLine2 && (
+                <Input
+                  id="nameLine2"
+                  value={editingButton?.nameLine2 || ""}
+                  onChange={(e) => setEditingButton(prev => prev ? { ...prev, nameLine2: e.target.value } : null)}
+                  className="w-full h-7"
+                  placeholder="Текст второй строки"
+                />
+              )}
+              {editingButton?.showNameLine3 && (
+                <Input
+                  id="nameLine3"
+                  value={editingButton?.nameLine3 || ""}
+                  onChange={(e) => setEditingButton(prev => prev ? { ...prev, nameLine3: e.target.value } : null)}
+                  className="w-full h-7"
+                  placeholder="Текст третьей строки"
+                />
+              )}
+            </div>
+          </div>
+          {/* End New: Second and Third Name Lines */}
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="buttonColor" className="text-right">
               Цвет
@@ -247,7 +303,7 @@ export const ButtonSettingsDialog = ({
                       {!selectedFolderId ? (
                         <SelectItem value="select-folder-first" disabled>Сначала выберите папку</SelectItem>
                       ) : rangesInSelectedFolder.length === 0 ? (
-                        <SelectItem value="no-ranges-in-folder" disabled>Нет диапазонов в этой папке</SelectItem>
+                          <SelectItem value="no-ranges-in-folder" disabled>Нет диапазонов в этой папке</SelectItem>
                       ) : (
                         rangesInSelectedFolder.map(range => (
                           <SelectItem key={range.id} value={range.id}>
@@ -321,7 +377,7 @@ export const ButtonSettingsDialog = ({
 
           <div className={cn(
             "grid grid-cols-4 items-center gap-4 border-t",
-            isMobileMode ? "pt-3.5 mt-1.5" : "pt-4 mt-2"
+            isMobileMode ? "pt-3 mt-1" : "pt-3.5 mt-1.5"
           )}>
             <Label className="text-right">Шрифт</Label>
             <div className={cn(
@@ -372,53 +428,12 @@ export const ButtonSettingsDialog = ({
             </div>
           </div>
 
-          {/* New section for Text Alignment and Text Wrap */}
-          <div className={cn(
-            "grid grid-cols-4 items-start gap-4 border-t",
-            isMobileMode ? "pt-3.5 mt-1.5" : "pt-4 mt-2"
-          )}>
-            <Label className="text-right col-start-1 pt-2">Текст</Label>
-            <div className="col-span-3 flex flex-col gap-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="textWrap"
-                  checked={editingButton?.textWrap ?? true}
-                  onCheckedChange={(checked) => {
-                    setEditingButton(prev => prev ? { ...prev, textWrap: !!checked } : null);
-                  }}
-                />
-                <Label htmlFor="textWrap" className="font-normal">Перенос текста</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Label className="font-normal">Выравнивание:</Label>
-                <RadioGroup
-                  value={editingButton?.textAlign || 'center'}
-                  onValueChange={(value: 'left' | 'center' | 'right') => {
-                    setEditingButton(prev => prev ? { ...prev, textAlign: value } : null);
-                  }}
-                  className="flex gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="left" id="textAlignLeft" />
-                    <Label htmlFor="textAlignLeft" className="font-normal">Слева</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="center" id="textAlignCenter" />
-                    <Label htmlFor="textAlignCenter" className="font-normal">Центр</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="right" id="textAlignRight" />
-                    <Label htmlFor="textAlignRight" className="font-normal">Справа</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </div>
-          </div>
+          {/* Removed section for Text Alignment and Text Wrap */}
 
           {/* Group for Size (Width, Height) */}
           <div className={cn(
             "grid grid-cols-4 items-center gap-4 border-t",
-            isMobileMode ? "pt-3.5 mt-1.5" : "pt-4 mt-2"
+            isMobileMode ? "pt-3 mt-1" : "pt-3.5 mt-1.5"
           )}>
             <Label className="text-right">Размер</Label>
             <div className="col-span-3 grid grid-cols-2 gap-4">
@@ -486,7 +501,7 @@ export const ButtonSettingsDialog = ({
 
           <div className={cn(
             "grid grid-cols-4 items-start gap-4 border-t",
-            isMobileMode ? "pt-3.5 mt-1.5" : "pt-4 mt-2"
+            isMobileMode ? "pt-3 mt-1" : "pt-3.5 mt-1.5"
           )}>
             <Label className="text-right col-start-1 pt-2">Опции</Label>
             <div className="col-span-3 flex flex-col gap-2">

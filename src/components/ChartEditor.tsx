@@ -150,6 +150,10 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
       })),
       textAlign: 'center', // New default
       textWrap: true,      // New default
+      showNameLine2: false, // Default to false
+      nameLine2: '',        // Default empty
+      showNameLine3: false, // Default to false
+      nameLine3: '',        // Default empty
     };
     setButtons((prev) => [...prev, newButton]);
     setEditingButton(newButton);
